@@ -1,9 +1,17 @@
 (() => {
   const API_URL = 'https://aksharamukha-plugin.appspot.com/api/plugin';
+  const DEFAULT_FONT_STACK = '"system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif';
+  const TRUSTED_FONT_HOSTS = new Set([
+    'cdn.jsdelivr.net',
+    'github.com',
+    'raw.githubusercontent.com',
+    'www.omniglot.com'
+  ]);
   const model = ScriptMixin.data();
   const methods = model.methods || {};
-  const getInputClass = methods.getInputClass ? methods.getInputClass.bind(model) : ((src) => String(src || '').toLowerCase());
-  const getOutputClass = methods.getOutputClass ? methods.getOutputClass.bind(model) : ((tgt) => String(tgt || '').toLowerCase());
+  const defaultScriptClass = (script) => String(script || '').toLowerCase();
+  const getInputClass = methods.getInputClass ? methods.getInputClass.bind(model) : defaultScriptClass;
+  const getOutputClass = methods.getOutputClass ? methods.getOutputClass.bind(model) : defaultScriptClass;
   const getScriptObject = methods.getScriptObject ? methods.getScriptObject.bind(model) : ((name) => {
     const all = [...(model.autodetect || []), ...(model.scriptsIndic || []), ...(model.scriptsLatin || [])];
     return all.find(s => s && s.value === name) || {};
@@ -30,7 +38,7 @@
   const scriptPool = [
     ...(model.scriptsIndic || []),
     ...(model.scriptsLatin || [])
-  ].sort((a, b) => String(a?.label || '').localeCompare(String(b?.label || '')));
+  ].sort((a, b) => String(a?.label || '').localeCompare(String(b?.label || ''), 'en'));
   const scripts = [...(model.autodetect || []), ...scriptPool];
 
   const mapOptions = (arr) => (arr || [])
@@ -47,14 +55,14 @@
     });
   };
 
-  const renderCheckboxes = (container, options, groupName) => {
+  const renderCheckboxes = (container, options, checkboxName) => {
     container.innerHTML = '';
     options.forEach((opt) => {
       const label = document.createElement('label');
       label.className = 'option';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.name = groupName;
+      cb.name = checkboxName;
       cb.value = opt.value;
       label.appendChild(cb);
       label.append(' ' + opt.label);
@@ -74,6 +82,25 @@
 
   const setStatus = (txt = '') => { els.status.textContent = txt; };
   const setError = (txt = '') => { els.error.textContent = txt; };
+  const sanitizeFontName = (name) => String(name || '').replace(/[^a-zA-Z0-9_-]/g, '').trim();
+  const toFontFamily = (safeFontName) => safeFontName ? `"${safeFontName}", ${DEFAULT_FONT_STACK}` : DEFAULT_FONT_STACK;
+  const getTrustedFontUrl = (url) => {
+    const raw = String(url || '').trim();
+    if (!raw || /["'()\\;<>{}\[\]\s]/.test(raw)) return '';
+    let parsed;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      return '';
+    }
+    if (parsed.protocol !== 'https:') return '';
+    if (!TRUSTED_FONT_HOSTS.has(parsed.hostname)) return '';
+    const safeHref = parsed.href;
+    if (!/^[A-Za-z0-9/:.?&=%+,_~#-]+$/.test(safeHref)) return '';
+    return safeHref;
+  };
+  const makeFontFaceRule = (fontName, fontUrl) =>
+    `@font-face{font-family:"${fontName}";src:url("${fontUrl}");font-display:swap;}`;
   const getFontStyleEl = () => {
     let style = document.getElementById(fontStyleId);
     if (!style) {
@@ -85,19 +112,29 @@
   };
   const addFontFace = (fontName, fontUrl) => {
     if (!fontName || !fontUrl || loadedFonts.has(fontName)) return;
+    const safeFontName = sanitizeFontName(fontName);
+    const safeFontUrl = getTrustedFontUrl(fontUrl);
+    if (!safeFontName || !safeFontUrl) return;
     const style = getFontStyleEl();
-    style.appendChild(document.createTextNode(`@font-face{font-family:"${fontName}";src:url("${fontUrl}");font-display:swap;}`));
-    loadedFonts.add(fontName);
+    const rule = makeFontFaceRule(safeFontName, safeFontUrl);
+    if (style.sheet && typeof style.sheet.insertRule === 'function') {
+      style.sheet.insertRule(rule, style.sheet.cssRules.length);
+    } else {
+      style.appendChild(document.createTextNode(rule));
+    }
+    loadedFonts.add(safeFontName);
   };
   const applyFontToTextarea = (el, scriptValue) => {
     const script = getScriptObject(scriptValue);
     const fontName = script?.font?.name || '';
     const fontUrl = script?.font?.url || '';
-    if (fontName && fontUrl) {
-      addFontFace(fontName, fontUrl);
-      el.style.fontFamily = `"${fontName}", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    const safeFontName = sanitizeFontName(fontName);
+    const safeFontUrl = getTrustedFontUrl(fontUrl);
+    if (safeFontName && safeFontUrl) {
+      addFontFace(safeFontName, safeFontUrl);
+      el.style.fontFamily = toFontFamily(safeFontName);
     } else {
-      el.style.fontFamily = '';
+      el.style.fontFamily = toFontFamily('');
     }
   };
   const applyScriptStyles = () => {
