@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aksharamukha - Script Converter</title>
+  <meta name="description" content="Aksharamukha transliterates text between Indic and related scripts using a dependency-free static web app.">
+  <meta name="theme-color" content="#1f2937">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Aksharamukha</h1>
+    <p>Framework-free script converter (HTML/CSS/Vanilla JS)</p>
+  </header>
+
+  <main class="container" aria-label="Converter">
+    <section class="panel controls" aria-label="Conversion controls">
+      <div class="grid two">
+        <label for="sourceScript">Source script</label>
+        <select id="sourceScript" aria-label="Source script"></select>
+
+        <label for="targetScript">Target script</label>
+        <select id="targetScript" aria-label="Target script"></select>
+      </div>
+
+      <div class="actions">
+        <button id="swapBtn" type="button">Swap</button>
+        <button id="convertBtn" type="button">Convert</button>
+        <button id="clearBtn" type="button">Clear</button>
+        <button id="copyBtn" type="button">Copy output</button>
+      </div>
+
+      <details>
+        <summary>Pre-options</summary>
+        <div id="preOptions" class="options" aria-label="Pre options"></div>
+      </details>
+
+      <details>
+        <summary>Post-options</summary>
+        <div id="postOptions" class="options" aria-label="Post options"></div>
+      </details>
+
+      <label class="checkbox">
+        <input id="preserveSource" type="checkbox">
+        Preserve source orthography where applicable
+      </label>
+
+      <p id="status" role="status" aria-live="polite"></p>
+      <p id="error" role="alert" aria-live="assertive"></p>
+    </section>
+
+    <section class="panel editor" aria-label="Text conversion">
+      <label for="inputText">Input</label>
+      <textarea id="inputText" rows="12" placeholder="Enter text to transliterate..."></textarea>
+
+      <label for="outputText">Output</label>
+      <textarea id="outputText" rows="12" readonly placeholder="Converted text appears here..."></textarea>
+    </section>
+  </main>
+
+  <script src="./js/script-data.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
